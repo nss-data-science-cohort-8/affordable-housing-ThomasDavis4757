@@ -4,8 +4,15 @@ output: html_notebook
 ---
 
 ```{r}
+install.packages("geosphere")
+```
+
+
+
+```{r}
 library(tidyverse)
 library(sf)
+library(geosphere)
 
 filtered_sales <- read_csv("../data/filtered_sales.csv")
 LIHTC <- read_csv("../data/LIHTC.csv")
@@ -22,4 +29,70 @@ property_details <- property_details |>
 
 
 ```
+
+```{r}
+ParkRichRoadLIHTC <- LIHTC |> 
+  filter(HUD_ID == 'TNA20130015')
+
+ParkRichRoadLIHTC
+```
+
+```{r}
+sales_total <- inner_join(property_details, filtered_sales, by = 'apn') |> 
+  mutate(
+    longitude = as.numeric(longitude),
+    latitude = as.numeric(latitude)
+    )
+sales_total
+```
+
+
+
+```{r}
+distance_func <- function(row) {
+  longitude <- as.numeric(row[["longitude"]])  
+  latitude <- as.numeric(row[["latitude"]])    
+  
+  distVincentySphere(c(longitude, latitude), c(ParkRichRoadLIHTC[['LONGITUDE']], ParkRichRoadLIHTC[['LATITUDE']]))
+}
+```
+
+
+
+```{r}
+summary(sales_total$longitude)
+summary(sales_total$latitude)
+```
+
+
+```{r}
+distance_value <- distVincentySphere(c(-110.32,40.5524),c(-112.3638,36.266))
+distance_value
+```
+
+```{r}
+sales_total <- sales_total |> 
+  drop_na(latitude) |> 
+  drop_na(longitude)
+
+sales_total
+```
+
+st_distance
+
+
+
+```{r}
+sales_total <- sales_total |> 
+  mutate(distance_to_ParkRich = apply(sales_total,1,distance_func))
+
+sales_total <- sales_total |> 
+  mutate(less2000ft = distance_to_ParkRich <= (2000 * .3048)) |> 
+  mutate(btwn2and3thoft = (distance_to_ParkRich >= (2000 * .3048)) & (distance_to_ParkRich <= (3000 * .3048)))
+
+sales_total |> 
+  filter(btwn2and3thoft)
+```
+
+
 
