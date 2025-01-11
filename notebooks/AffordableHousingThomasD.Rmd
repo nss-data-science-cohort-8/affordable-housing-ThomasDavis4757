@@ -1,0 +1,25 @@
+---
+title: "AffordableHousingThomasD"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(sf)
+
+filtered_sales <- read_csv("../data/filtered_sales.csv")
+LIHTC <- read_csv("../data/LIHTC.csv")
+barnes <- read_csv("../data/barnes.csv")
+property_details <- read_csv("../data/property_details.csv")
+```
+
+```{r}
+property_details <- property_details |> 
+  mutate(
+    longitude = as.numeric(str_extract(centroid, "\\((.+),", group = 1)),
+    latitude = as.numeric(str_extract(centroid, ",(.+)\\)", group = 1))
+    )
+
+
+```
+
