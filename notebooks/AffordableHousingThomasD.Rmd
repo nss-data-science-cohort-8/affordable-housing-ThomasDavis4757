@@ -71,11 +71,14 @@ distance_value
 ```
 
 ```{r}
+
 sales_total <- sales_total |> 
   drop_na(latitude) |> 
   drop_na(longitude)
 
 sales_total
+
+
 ```
 
 st_distance
@@ -90,9 +93,80 @@ sales_total <- sales_total |>
   mutate(less2000ft = distance_to_ParkRich <= (2000 * .3048)) |> 
   mutate(btwn2and3thoft = (distance_to_ParkRich >= (2000 * .3048)) & (distance_to_ParkRich <= (3000 * .3048)))
 
+sales_total <- sales_total |> 
+  mutate(distance_to_ParkRichFeet = distance_to_ParkRich * 3.2808)
+
 sales_total |> 
   filter(btwn2and3thoft)
 ```
 
+```{r}
+sales_total <- sales_total |> 
+  mutate(ownedyear = year(ownerdate))
 
+
+sales_total <- sales_total |> 
+  mutate(years_from_PR = ownedyear - ParkRichRoadLIHTC[['YR_ALLOC']])
+
+
+sales_total <- sales_total |> 
+  mutate(fiveyearsbefore = years_from_PR <= -1 & years_from_PR >= -5) |> 
+  mutate(fiveyearsafter = years_from_PR >= 1 & years_from_PR <= 5)
+
+
+
+sales_total <- sales_total |>   
+  mutate(group = case_when(less2000ft ~ "treatment",
+        btwn2and3thoft ~ "control"))
+
+sales_total <- sales_total |>   
+  mutate(befOrAfter = case_when(fiveyearsbefore ~ "pre",
+        fiveyearsafter ~ "post"))
+
+
+sales_total |> 
+  filter()
+```
+
+```{r}
+sales_total_edited <- sales_total |> 
+  filter((less2000ft | btwn2and3thoft) & (fiveyearsbefore | fiveyearsafter))
+
+sales_total_edited
+
+sales_total |> 
+  filter(less2000ft | btwn2and3thoft)
+
+sales_total_edited |> 
+  summary(distance_to_ParkRich)
+```
+
+
+
+
+
+```{r}
+diff_of_diff <- sales_total_edited |> 
+  group_by(group, befOrAfter) |> 
+  summarize(average = mean(amount))
+
+diff_of_diff
+```
+
+
+```{r}
+(diff_of_diff$average[[3]] - diff_of_diff$average[[4]]) - (diff_of_diff$average[[1]] - diff_of_diff$average[[2]])
+```
+
+
+
+```{r}
+sales_total_edited
+```
+
+
+```{r}
+lm(amount ~ group * befOrAfter, data = sales_total_edited) |> 
+  summary()
+```
 
