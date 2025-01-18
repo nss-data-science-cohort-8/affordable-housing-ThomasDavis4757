@@ -129,6 +129,7 @@ sales_total |>
 ```
 
 ```{r}
+
 sales_total_edited <- sales_total |> 
   filter((less2000ft | btwn2and3thoft) & (fiveyearsbefore | fiveyearsafter))
 
@@ -147,6 +148,7 @@ sales_total_edited |>
 
 ```{r}
 diff_of_diff <- sales_total_edited |> 
+  
   group_by(group, befOrAfter) |> 
   summarize(average = mean(amount))
 
@@ -166,7 +168,133 @@ sales_total_edited
 
 
 ```{r}
-lm(amount ~ group * befOrAfter, data = sales_total_edited) |> 
+sales_total_edited_allyears <- sales_total |> 
+  filter((less2000ft | btwn2and3thoft))
+
+```
+
+
+
+```{r}
+lm(amount ~ group * years_from_PR, data = sales_total_edited) |> 
   summary()
+```
+
+```{r}
+lm(amount ~ group * years_from_PR, data = sales_total_edited_allyears) |> 
+  summary()
+```
+
+
+
+```{r}
+diff_of_diff <- function(ID) {
+  
+  ID_Location <- LIHTC |> 
+  filter(HUD_ID == ID)
+  print("1")
+  
+  internal_distance_func <- function(row) {
+  longitude <- as.numeric(row[["longitude"]])  
+  latitude <- as.numeric(row[["latitude"]])    
+  distVincentySphere(c(longitude, latitude), c(ID_Location[['LONGITUDE']], ID_Location[['LATITUDE']]))
+  }
+  print("2")
+  
+  internal_sales_total <- inner_join(property_details, filtered_sales, by = 'apn') |> 
+  mutate(
+    longitude = as.numeric(longitude),
+    latitude = as.numeric(latitude)
+    )
+  
+  print("4")
+  internal_sales_total <- internal_sales_total |> 
+  mutate(distance_to_ParkRich = apply(internal_sales_total,1,internal_distance_func))
+  print("5")
+  internal_sales_total <- internal_sales_total |> 
+  mutate(less2000ft = distance_to_ParkRich <= (2000 * .3048)) |> 
+  mutate(btwn2and3thoft = (distance_to_ParkRich >= (2000 * .3048)) & (distance_to_ParkRich <= (3000 * .3048)))
+  print("6")
+  internal_sales_total <- internal_sales_total |> 
+  mutate(distance_to_ParkRichFeet = distance_to_ParkRich * 3.2808)
+  print("7")
+  internal_sales_total <- internal_sales_total |> 
+  mutate(ownedyear = year(ownerdate))
+  print("8")
+
+  internal_sales_total <- internal_sales_total |> 
+  mutate(years_from_PR = ownedyear - ID_Location[['YR_ALLOC']])
+  print("9")
+
+  internal_sales_total <- internal_sales_total |> 
+  mutate(fiveyearsbefore = years_from_PR <= -1 & years_from_PR >= -5) |> 
+  mutate(fiveyearsafter = years_from_PR >= 1 & years_from_PR <= 5)
+  print("10")
+
+
+  internal_sales_total <- internal_sales_total |>   
+  mutate(group = case_when(less2000ft ~ "treatment",
+        btwn2and3thoft ~ "control"))
+  print("11")
+  internal_sales_total <- internal_sales_total |>   
+  mutate(befOrAfter = case_when(fiveyearsbefore ~ "pre",
+        fiveyearsafter ~ "post"))
+  
+  print("12")  
+  
+  internal_sales_total_edited <- internal_sales_total |> 
+  filter((less2000ft | btwn2and3thoft) & (fiveyearsbefore | fiveyearsafter))
+  
+  print('13')
+  
+  internal_diff_of_diff <- internal_sales_total_edited |> 
+  
+    group_by(group, befOrAfter) |> 
+    summarize(average = mean(amount))
+
+  
+  internal_sales_total_edited <- internal_sales_total_edited |> 
+    mutate(AffordableHousingName = ID_Location[['PROJECT']])
+  
+  internal_sales_total_edited
+  
+  
+#  (internal_diff_of_diff$average[[3]] - internal_diff_of_diff$average[[4]]) - (internal_diff_of_diff$average[[1]] - internal_diff_of_diff$average[[2]])
+  
+}
+```
+
+do.call
+
+
+n = length(LIHTC_properties)
+datalist = vector("list", length = n)
+for (i in 1:50) {
+  unit <- get_affordable_housing_df(LIHTC_properties[i], drop_outside_years = TRUE)
+  datalist[[i]] <- unit
+}
+
+LIHTC_all_properties_data = do.call(rbind, datalist)
+
+```{r}
+value <- diff_of_diff('TNA20110543')
+```
+
+
+```{r}
+LIHTC_properties <- as.vector(LIHTC$HUD_ID)
+LIHTC_properties
+n = length(LIHTC_properties)
+datalist = vector("list", length = n)
+for (i in 1:10) {
+  unit <- diff_of_diff(LIHTC_properties[i])
+  datalist[[i]] <- unit
+}
+
+LIHTC_all_properties_data = do.call(rbind, datalist)
+```
+
+```{r}
+LIHTC_all_properties_data
 ```
 
